@@ -1,21 +1,20 @@
 /**
  * @file main.cpp
- * @brief Entry point for M5DinMeter Dock controller
+ * @brief Entry point — initializes hardware then enters the launcher menu
  */
-#include "FactoryTest/FactoryTest.h"
+#include "Hardware/Hardware.h"
+#include "UI/Launcher.h"
 
-static FactoryTest ft;
-
-void view_create(FactoryTest* ft);
-void view_update();
+Hardware hw;
+Launcher launcher(hw);
 
 void setup()
 {
-    ft.init();
-    view_create(&ft);
+    hw.init();
+    launcher.begin();
 }
 
 void loop()
 {
-    view_update();
+    launcher.update();
 }
