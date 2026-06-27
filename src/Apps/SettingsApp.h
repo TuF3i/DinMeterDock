@@ -31,7 +31,7 @@ public:
         menu.items = _settings;
         menu.itemCount = SETTING_COUNT;
 
-        // Row layout: 6 items need scrolling (25px title + 6*21 = 151 > 135)
+        // Row layout
         constexpr int rowY[SETTING_COUNT] = {28, 49, 70, 91, 112, 133, 154};
         constexpr int rowH = 20;
 
@@ -47,7 +47,7 @@ public:
         // Set initial selected row offset
         menu.setSelectedRowOffset(0);
 
-        // Sync encoder position to avoid initial jump (Issue 3)
+        // Sync encoder position to avoid initial jump
         menu.lastEncPos = hw.input.enc.getPosition();
 
         // Configure
@@ -55,16 +55,13 @@ public:
         menu.setConfig().readInputInterval = 50;
         menu.setConfig().moveInLoop        = false;
 
-        // Camera for scrolling (visible area below 25px title bar, height 110px)
-        menu.setCameraSize(240, 110);
-        menu.getCamera().jumpTo(0, 0);
-        menu.getCamera().setDuration(300);
-        menu.getCamera().setTransitionPath(SmoothUIToolKit::EasingPath::easeOutBack);
-
         menu.getSelectorPostion().setDuration(300);
         menu.getSelectorPostion().setTransitionPath(SmoothUIToolKit::EasingPath::easeOutBack);
         menu.getSelectorShape().setDuration(300);
         menu.getSelectorShape().setTransitionPath(SmoothUIToolKit::EasingPath::easeOutBack);
+
+        // Manual scroll offset
+        menu._scrollY = 0;
 
         // Render initial frame to avoid flash
         menu.onRender();
@@ -103,7 +100,7 @@ private:
         {"Sleep & Wakeup", 0xC6D5EF, 0x46556F, [](Hardware& h) { SleepWakeupApp().run(h); }},
         {"Buzzer Volume",  0x8B6914, 0x5C4508, [](Hardware& h) { BuzzerVolumeApp().run(h); }},
         {"Power Off",      0xCEDBB8, 0x4E5B38, [](Hardware& h) { PowerOffApp().run(h); }},
-        {"\xe2\x86\x90 Back", 0x888888, 0xDDDDDD, nullptr},  // ← Back, runner=null
+        {"\xe2\x86\x90 Back", 0x888888, 0xDDDDDD, nullptr},
     };
 
     // --- SmoothSelector subclass ---
@@ -118,6 +115,7 @@ private:
         bool               _btnPressing = false;
         uint32_t           pressStartTime = 0;
         bool               goBack = false;
+        int                _scrollY = 0;   // manual scroll offset
 
         void setSelectedRowOffset(int idx)
         {
@@ -128,6 +126,21 @@ private:
         {
             for (size_t i = 0; i < _data.option_list.size(); i++)
                 _data.option_list[i].keyframe.x = 0;
+        }
+
+        void _updateScroll()
+        {
+            int sel = _data.selected_option_index;
+            int rowY = _data.option_list[sel].keyframe.y;
+            int visibleTop = 25;   // below title bar
+            int visibleBottom = 135;
+
+            // If selected row is above visible area, scroll up
+            if (rowY - _scrollY < visibleTop)
+                _scrollY = rowY - visibleTop;
+            // If selected row is below visible area, scroll down
+            if (rowY + _rowH - _scrollY > visibleBottom)
+                _scrollY = rowY + _rowH - visibleBottom;
         }
 
         void onReadInput() override
@@ -156,24 +169,22 @@ private:
                     if (_btnPressing)
                     {
                         _btnPressing = false;
-                        release();  // short press → onClick → onOpenEnd
+                        release();
                     }
                 }
             }
 
-            // --- Encoder navigation (skip during button press to avoid jump) ---
+            // --- Encoder navigation (skip during button press) ---
             if (waitButtonRelease)
             {
-                // Still need to keep checkEncoder in sync
                 h.input.checkEncoder(true);
                 lastEncPos = h.input.enc.getPosition();
                 return;
             }
 
-            h.input.checkEncoder(true);  // 3000/3500 Hz direction tone
+            h.input.checkEncoder(true);
             if (h.input.enc.getPosition() != lastEncPos)
             {
-                // Reset old selected row keyframe
                 _data.option_list[_data.selected_option_index].keyframe.x = 0;
 
                 if (h.input.enc.getPosition() < lastEncPos)
@@ -181,10 +192,10 @@ private:
                 else
                     goNext();
 
-                // Shift new selected row keyframe (slide right)
                 _data.option_list[_data.selected_option_index].keyframe.x = 12;
-
                 lastEncPos = h.input.enc.getPosition();
+
+                _updateScroll();
             }
         }
 
@@ -193,10 +204,9 @@ private:
             auto& c = hw->display.canvas;
             c->fillScreen(TFT_WHITE);
 
-            // Camera offset for scrolling
-            int camY = getCameraOffset().y;
+            int scrollY = _scrollY;
 
-            // --- Title bar (fixed, not affected by camera) ---
+            // --- Title bar (fixed) ---
             c->fillRect(0, 0, 240, 25, (uint32_t)0x4A4A6A);
             c->setFont(&fonts::efontCN_16);
             c->setTextSize(1);
@@ -204,23 +214,23 @@ private:
             c->setTextDatum(top_center);
             c->drawString("Settings", 120, 4);
 
-            // --- Rows (offset by camera for scrolling) ---
+            // --- Rows (offset by manual scroll) ---
             c->setFont(&fonts::efontCN_16_b);
             c->setTextSize(1);
 
             for (int i = 0; i < itemCount; i++)
             {
                 int rowX = _data.option_list[i].keyframe.x;
-                int rowY = _data.option_list[i].keyframe.y - camY;
+                int rowY = _data.option_list[i].keyframe.y - scrollY;
                 int textY = rowY + _rowH / 2;
 
-                // Skip rows that are completely off-screen
-                if (rowY + _rowH < 25 || rowY > 135) continue;
+                // Skip rows outside visible area (clip partial overlap with title bar)
+                if (rowY < 25 || rowY >= 135) continue;
 
                 if (i == _data.selected_option_index && !isOpening())
                 {
                     auto sf = getSelectorCurrentFrame();
-                    c->fillSmoothRoundRect(sf.x, sf.y - camY, sf.w, sf.h, 6, items[i].themeColor);
+                    c->fillSmoothRoundRect(sf.x, sf.y - scrollY, sf.w, sf.h, 6, items[i].themeColor);
                     c->setTextColor(items[i].textColor);
                 }
                 else
@@ -248,7 +258,6 @@ private:
             if (goBack) return;
 
             int idx = _data.selected_option_index;
-            // Check if this is the Back option (runner == nullptr)
             if (idx >= 0 && idx < itemCount && items[idx].runner == nullptr)
             {
                 goBack = true;
@@ -259,7 +268,7 @@ private:
             getSelectorPostion().setTransitionPath(SmoothUIToolKit::EasingPath::easeOutQuad);
             getSelectorShape().setDuration(300);
             getSelectorShape().setTransitionPath(SmoothUIToolKit::EasingPath::easeOutQuad);
-            open({-20, -20, 280, 175});
+            open({-20, 25, 280, 135});
         }
 
         void onOpenEnd() override

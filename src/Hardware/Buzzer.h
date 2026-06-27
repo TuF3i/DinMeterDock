@@ -60,7 +60,7 @@ public:
     inline uint8_t getVolume() const { return _volume; }
 
 private:
-    static constexpr uint8_t _channel    = 6;    // LEDC ch 6 (ch 7 used by display backlight)
+    static constexpr uint8_t _channel    = 2;    // LEDC ch 2 on Timer 1 (independent of backlight ch 7 on Timer 3)
     static constexpr uint8_t _resolution = 8;    // 8-bit => 0-255 duty range
 
     uint8_t       _volume   = 128;     // 50% duty
