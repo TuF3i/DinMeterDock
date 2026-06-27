@@ -120,7 +120,7 @@ void Launcher::Impl::MenuCore::onRender()
             }
             else yOff = getOptionCurrentFrame(idx).y + 6;
 
-            c->pushImage(getOptionCurrentFrame(idx).x + 13, yOff, 32, 32, owner->apps[idx].icon);
+            c->pushImage(getOptionCurrentFrame(idx).x + 13, yOff, 32, 32, owner->apps[idx].icon, (uint16_t)0x0000);
         }
 
         if (i == 0 && !isOpening())

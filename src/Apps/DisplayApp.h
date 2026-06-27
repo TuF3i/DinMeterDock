@@ -63,12 +63,11 @@ public:
         hw.display.push();
         delay(500);
 
-        hw.input.resetEncoder(0);
+        // Wait for button press to exit (no power-off timeout)
         while (1)
         {
-            hw.input.checkEncoder();
-            if (hw.input.checkNext()) break;
-            delay(10);
+            if (hw.input.checkNext(false)) break;
+            delay(50);
         }
     }
 };

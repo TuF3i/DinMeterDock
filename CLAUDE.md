@@ -113,3 +113,54 @@ Recommended extension: `platformio.platformio-ide`. Pre-configured debug launch 
 3. Add an entry to the `_apps` array in `src/UI/Launcher.cpp` (name, theme/tag colors, icon, lambda)
 4. Bump `APP_COUNT` in `src/UI/Launcher.h`
 5. Run `pio run` to build
+
+## Icons
+
+### Format
+
+All icons are 32×32 pixels, RGB565 format (`uint16_t[1024]`), stored as C header arrays in `src/UI/Assets/`. They are rendered in the Launcher via `canvas->pushImage(x, y, 32, 32, data)`.
+
+### Transparency
+
+**`pushImage()` has no alpha channel** — every pixel overwrites whatever is underneath. To make icon backgrounds transparent so the menu card's `themeColor` shows through:
+
+1. Set the icon's background pixels to `0x0000` (pure black in RGB565)
+2. Use the transparent overload: `canvas->pushImage(x, y, 32, 32, data, (uint16_t)0x0000)`
+3. LovyanGFX will skip `0x0000` pixels, leaving the underlying card color visible in those spots
+
+This is already applied globally in `Launcher.cpp` line 123. All icons that use `0x0000` as background will automatically have transparency. **Current icons do not use `0x0000` in their graphics, so this is safe.** If you create a new icon that needs `0x0000` in the foreground graphic, use a different sentinel value (e.g., `0x0001`) and update the Launcher pushImage call accordingly.
+
+### Generation scripts
+
+```bash
+# Convert PNG to icon header (requires Pillow)
+python3 scripts/png2icon.py icon.png --name icon_xxx --bg-color RRGGBB -o ../src/UI/Assets/
+
+# Generate a gear icon programmatically (no deps)
+python3 scripts/gear_icon.py > src/UI/Assets/icon_menu.h
+```
+
+`png2icon.py` supports:
+- `--bg-color RRGGBB` — replace transparent (alpha < 128) pixels with 24-bit color
+- `--bg-color-565 HEX` — replace with exact RGB565 value (skips conversion)
+- `--width W --height H` — non-standard sizes (default 32×32)
+
+## Buzzer / Volume
+
+The buzzer (GPIO3) uses ESP32 LEDC PWM channel 6 (channel 7 is used by display backlight). `Buzzer.h` wraps `ledcSetup`/`ledcAttachPin`/`ledcWrite`/`ledcDetachPin` directly — it does **not** use Arduino's `tone()`.
+
+- Volume range: 0-255 (default 128 = 50% duty)
+- `Input.h` routes through `Buzzer` when `_buzzer` is set (done in `Hardware::init()`)
+- Volume is adjustable via `BuzzerVolumeApp` in the Settings menu
+
+## Settings Sub-Menu
+
+`SettingsApp.h` is a vertical row-list sub-menu using `SmoothUIToolKit::SelectMenu::SmoothSelector` (not `SmoothOptions` like the main Launcher).
+
+Key patterns:
+- **Row layout**: each option has a fixed keyframe. Selected row keyframe.x is set to 12 (slides right), others at 0. The `SmoothSelector` animates the highlight between positions.
+- **Scrolling**: `setCameraSize(240, 110)` enables the camera. Rows are offset by `getCameraOffset().y` in `onRender()`. Title bar is drawn at fixed y=0.
+- **Back option**: the last entry has `runner = nullptr`. `onClick()` checks this and sets `goBack = true` instead of opening.
+- **Row clipping**: skip rows with `rowY < 25` (title bar area) or `rowY + rowH <= 25` or `rowY >= 135`.
+- **Encoder init**: `lastEncPos` MUST sync to `hw.input.enc.getPosition()` after `resetEncoder()` to prevent cursor jump.
+- Adding an item: bump `SETTING_COUNT`, add to `_settings[]` array and `rowY[]` array in `run()`, add corresponding `#include`.
