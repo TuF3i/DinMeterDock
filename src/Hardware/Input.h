@@ -6,6 +6,7 @@
 #include <Arduino.h>
 #include <Button.h>
 #include <ESP32Encoder.h>
+#include "Buzzer.h"
 #include "../Config.h"
 
 class Input
@@ -14,6 +15,7 @@ public:
     Button        btn_pwr = Button(BTN_PWR_PIN, BTN_DEBOUNCE_MS);
     ESP32Encoder  enc;
     int           enc_pos = 0;
+    Buzzer*       _buzzer = nullptr;   // set by Hardware::init() for volume-aware sounds
 
     void init()
     {
@@ -29,7 +31,12 @@ public:
     {
         if (enc_pos != enc.getPosition())
         {
-            if (playBuzz)
+            if (playBuzz && _buzzer)
+            {
+                _buzzer->noTone();
+                _buzzer->tone((enc.getPosition() > enc_pos) ? 3000 : 3500, 20);
+            }
+            else if (playBuzz)
             {
                 noTone(BUZZ_PIN);
                 tone(BUZZ_PIN, (enc.getPosition() > enc_pos) ? 3000 : 3500, 20);
@@ -53,7 +60,10 @@ public:
     {
         if (!btn_pwr.read())
         {
-            tone(BUZZ_PIN, 2500, 50);
+            if (_buzzer)
+                _buzzer->tone(2500, 50);
+            else
+                tone(BUZZ_PIN, 2500, 50);
 
             uint8_t time_count = 0;
             while (!btn_pwr.read())
@@ -61,9 +71,7 @@ public:
                 time_count++;
                 if (time_count > 100 && checkPowerOff)
                 {
-                    // Shutdown sequence (canvas must be set by caller)
-                    // The actual power-off drawing is handled by Power class
-                    return false; // caller should handle this via Power
+                    return false;
                 }
                 delay(10);
             }

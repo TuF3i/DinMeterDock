@@ -63,6 +63,12 @@ public:
         hw.display.push();
         delay(500);
 
-        hw.input.waitNext();
+        hw.input.resetEncoder(0);
+        while (1)
+        {
+            hw.input.checkEncoder();
+            if (hw.input.checkNext()) break;
+            delay(10);
+        }
     }
 };

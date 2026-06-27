@@ -206,8 +206,8 @@ private:
             for (int i = 0; i < BRICK_LINES; i++)
                 for (int j = 0; j < BRICKS_PER_LINE; j++)
                     if (_bricks[i][j])
-                        c->fillRect(j * _brickSize.x + 1, i * _brickSize.y + _brickSize.y / 2,
-                                    _brickSize.x - 1, _brickSize.y, (uint32_t)0x754316);
+                        c->fillRect(j * _brickSize.x, i * _brickSize.y + _brickSize.y / 2,
+                                    _brickSize.x, _brickSize.y, (uint32_t)0x754316);
         }
 
         _hw->display.push();

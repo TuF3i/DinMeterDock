@@ -22,6 +22,7 @@ public:
     {
         power.hold();
         rtc.init();
+        input._buzzer = &buzzer;
         input.init();
         display.init();
     }

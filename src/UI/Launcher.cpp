@@ -3,14 +3,10 @@
  * @brief Menu UI implementation using SmoothUIToolKit
  */
 #include "Launcher.h"
-#include "../Apps/DisplayApp.h"
-#include "../Apps/BrightnessApp.h"
+#include "../Apps/SettingsApp.h"
 #include "../Apps/RtcTimeApp.h"
 #include "../Apps/WifiScanApp.h"
-#include "../Apps/EncoderApp.h"
 #include "../Apps/ArkanoidApp.h"
-#include "../Apps/SleepWakeupApp.h"
-#include "../Apps/PowerOffApp.h"
 #include <smooth_ui_toolkit.h>
 
 using namespace SmoothUIToolKit;
@@ -174,14 +170,10 @@ void Launcher::Impl::MenuCore::onOpenEnd()
 Launcher::Launcher(Hardware& hw)
     : _hw(hw)
     , _apps{
-        {"DISPLAY TEST",  0xB8DBD9, 0x385B59, image_data_icon_display,     [](Hardware& h) { DisplayApp().run(h); }},
-        {"BRIGHTNESS",    0x87C38F, 0x07430F, image_data_icon_brightness,  [](Hardware& h) { BrightnessApp().run(h); }},
-        {"RTC TIME",      0xC9C9EE, 0x49496E, image_data_icon_rtc,        [](Hardware& h) { RtcTimeApp().run(h); }},
-        {"WIFI SCAN",     0xF6A4A4, 0x762424, image_data_icon_wifi,       [](Hardware& h) { WifiScanApp().run(h); }},
-        {"ENCODER TEST",  0x6AB8A0, 0x163820, image_data_icon_encoder,    [](Hardware& h) { EncoderApp().run(h); }},
-        {"ARKANOID",      0xF5C396, 0x754316, image_data_icon_game,       [](Hardware& h) { ArkanoidApp().run(h); }},
-        {"SLEEP&WAKEUP",  0xC6D5EF, 0x46556F, image_data_icon_sleep,      [](Hardware& h) { SleepWakeupApp().run(h); }},
-        {"POWER OFF",     0xCEDBB8, 0x4E5B38, image_data_icon_poweroff,   [](Hardware& h) { PowerOffApp().run(h); }},
+        {"SETTINGS",  0x4A4A6A, 0xFFFFFF, image_data_icon_menu,  [](Hardware& h) { SettingsApp().run(h); }},
+        {"RTC TIME",  0xC9C9EE, 0x49496E, image_data_icon_rtc,   [](Hardware& h) { RtcTimeApp().run(h); }},
+        {"WIFI SCAN", 0xF6A4A4, 0x762424, image_data_icon_wifi,  [](Hardware& h) { WifiScanApp().run(h); }},
+        {"ARKANOID",  0xF5C396, 0x754316, image_data_icon_game,  [](Hardware& h) { ArkanoidApp().run(h); }},
       }
     , _impl(new Impl(hw, _apps, APP_COUNT))
 {

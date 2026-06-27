@@ -28,7 +28,7 @@ private:
         std::function<void(Hardware&)> runner;
     };
 
-    static constexpr int APP_COUNT = 8;
+    static constexpr int APP_COUNT = 4;
     const AppEntry _apps[APP_COUNT];
 
     // --- Internals (implemented in Launcher.cpp) ---
